@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -19,6 +20,7 @@ namespace Paint_application
         {
             InitializeComponent();
             shapes = new List<Shape>();
+            selectedShapes = new List<Shape>();
             bm = new Bitmap(pictureBox1.Width, pictureBox1.Height);
             g = Graphics.FromImage(bm);
             g.Clear(Color.White);
@@ -27,19 +29,28 @@ namespace Paint_application
             brush = new SolidBrush(Color.Black);
             erase = new Pen(Color.White, size);
             dashStyle = DashStyle.Solid;
+            new_color = Color.Black;
         }
 
         float size = 1;
 
-        List<Shape> shapes;
+        List<Shape> shapes, selectedShapes;
+        Shape zoomedShape = null;
         Bitmap bm;
         Graphics g;
         bool paint = false;
         bool fill = false;
         bool dragging = false;
+        bool zooming = false;
+        bool touchedShape = false;
+        bool multiselect;
+
         Point p1, p2;
+        Point currentPositionCursor;
+        Point newPositionCursor;
+        int position;
+
         int index = 0;
-        int x, y, startX, startY, width, height;
         Pen pen;
         DashStyle dashStyle;
         Pen erase;
@@ -53,45 +64,39 @@ namespace Paint_application
             btn_color_Click(sender, e);
         }
 
-        private void button1_Click(object sender, EventArgs e)
+        private void pictrureBox1_MouseWheel(object sender, MouseEventArgs e)
         {
-            index = 3;
-        }
-
-        private void button2_Click(object sender, EventArgs e)
-        {
-            index = 4;
-        }
-
-        private void button3_Click(object sender, EventArgs e)
-        {
-            index = 5;
+            if (zooming == true && zoomedShape != null)
+            {
+                if (e.Delta > 0)
+                {
+                    zoomedShape.Zoom(1);
+                    pictureBox1.Refresh();
+                }
+                else
+                {
+                    zoomedShape.Zoom(-1);
+                    pictureBox1.Refresh();
+                }
+            }
         }
 
         private void pictureBox1_Paint(object sender, PaintEventArgs e)
         {
             // Refresh screen every time it has change on the screen
-            Graphics g = e.Graphics;
-            if (!paint) return;
-
+            if (!paint && !dragging) return;
             switch (index)
             {
-                case 3:
-                    if (fill) { g.FillEllipse(brush, startX, startY, width, height); }
-                    else
-                    {
-                        g.DrawEllipse(pen, startX, startY, width, height);
-                    }
+                case 6:
+
                     break;
-                case 4:
-                    if (fill) { g.FillRectangle(brush, startX, startY, width, height); }
-                    else
+                default:
+                    foreach (Shape shape in shapes)
                     {
-                        g.DrawRectangle(pen, startX, startY, width, height);
+                        shape.g = e.Graphics;
+                        shape.Draw();
+                        shape.g = g;
                     }
-                    break;
-                case 5:
-                    g.DrawLine(pen, startX, startY, x, y);
                     break;
             }
         }
@@ -108,25 +113,136 @@ namespace Paint_application
             cd.ShowDialog();
             new_color = cd.Color;
             pic_color.BackColor = cd.Color;
-            pen.Color = cd.Color;
-            brush.Color = cd.Color;
         }
 
         private void pictureBox1_MouseDown(object sender, MouseEventArgs e)
         {
-            paint = true;
+            p1 = p2 = e.Location; //Set point to free draw and erase
+
             dragging = true;
-            p1 = e.Location;
-            p2 = e.Location;
+            paint = true;
 
-            startX = e.Location.X;
-            startY = e.Location.Y;
+            if (Form.ModifierKeys == Keys.Control)
+                multiselect = true;
+            switch (index)
+            {
+                case 1:
+                    dragging = false;
+                    break;
+                case 2:
+                    dragging = false;
+                    break;
+                case 3:
+                    if (fill)
+                    {
+                        Shape fillEllipse = new FillEllipse(g, new SolidBrush(new_color));
+                        fillEllipse.p1 = e.Location;
+                        fillEllipse.p2 = e.Location;
+                        shapes.Add(fillEllipse);
+                    }
+                    else
+                    {
+                        Shape ellipse = new NonFillEllipse(g, new Pen(new_color, size), dashStyle);
+                        ellipse.p1 = e.Location;
+                        ellipse.p2 = e.Location;
+                        shapes.Add(ellipse);
+                    }
+                    dragging = false;
+                    break;
+                case 4:
+                    if (fill)
+                    {
+                        Shape fillRectangle = new FillRectangle(g, new SolidBrush(new_color));
+                        fillRectangle.p1 = e.Location;
+                        fillRectangle.p2 = e.Location;
+                        shapes.Add(fillRectangle);
+                    }
+                    else
+                    {
+                        Shape rectangle = new NonFillRectangle(g, new Pen(new_color, size), dashStyle);
+                        rectangle.p1 = e.Location;
+                        rectangle.p2 = e.Location;
+                        shapes.Add(rectangle);
+                    }
+                    dragging = false;
+                    break;
+                case 5:
+                    Shape line = new Line(g, new Pen(new_color, size), dashStyle);
+                    line.p1 = e.Location;
+                    line.p2 = e.Location;
+                    shapes.Add(line);
+                    dragging = false;
+                    break;
+                case 6:
+                    Shape arc = new Arc(g, new Pen(new_color, size), dashStyle);
+                    arc.p1 = e.Location;
+                    arc.p2 = e.Location;
+                    shapes.Add(arc);
+                    dragging = false;
+                    break;
+                case 8:
+                    if (fill)
+                    {
+                        Shape fillcircle = new FillCircle(g, new SolidBrush(new_color));
+                        fillcircle.p1 = e.Location;
+                        fillcircle.p2 = e.Location;
+                        shapes.Add(fillcircle);
+                    }
+                    else
+                    {
+                        Shape cirle = new NonFillCircle(g, new Pen(new_color, size), dashStyle);
+                        cirle.p1 = e.Location;
+                        cirle.p2 = e.Location;
+                        shapes.Add(cirle);
+                    }
+                    dragging = false;
+                    break;
+                default:
+                    paint = false;
+                    break;
+            }
 
-            
+            if (dragging == true)
+            {
+                for (int i = 0; i < shapes.Count; i++)
+                {
+                    if (shapes[i].ContainPoint(e.Location))
+                    {
+                        if (multiselect == true)
+                            selectedShapes.Add(shapes[i]);
+                        currentPositionCursor = e.Location;
+                        position = i;
+                        touchedShape = true;
+                        zoomedShape = shapes[i];
+                        zooming = true;
+                    }
+                    else
+                    {
+                        selectedShapes.Clear();
+                    }
+                }
+                if (touchedShape == false)
+                    dragging = false;
+            }
         }
 
         private void pictureBox1_MouseMove(object sender, MouseEventArgs e)
         {
+            //Calculate offset
+            if (dragging == true)
+            {
+                newPositionCursor = e.Location;
+                int offSetX = newPositionCursor.X - currentPositionCursor.X;
+                int offSetY = newPositionCursor.Y - currentPositionCursor.Y;
+                currentPositionCursor = newPositionCursor;
+
+                this.shapes[position].p1.X += offSetX;
+                this.shapes[position].p1.Y += offSetY;
+                this.shapes[position].p2.X += offSetX;
+                this.shapes[position].p2.Y += offSetY;
+                pictureBox1.Refresh();
+            }
+
             if (!paint) return;
             dragging = false;
 
@@ -142,44 +258,19 @@ namespace Paint_application
                     g.DrawLine(erase, p1, p2);
                     p2 = p1;
                     break;
+                default:
+                    shapes.Last().p2 = e.Location;
+                    break;
             }
             pictureBox1.Refresh();
-
-            x = e.X;
-            y = e.Y;
-            width = x - startX;
-            height = y - startY;
         }
 
         private void pictureBox1_MouseUp(object sender, MouseEventArgs e)
         {
-            width = x - startX;
-            height = y - startY;
-
-            switch (index)
-            {
-                case 3:
-                    if (fill) 
-                    { 
-                        g.FillEllipse(brush, startX, startY, width, height); 
-                    }
-                    else
-                    {
-                        g.DrawEllipse(pen, startX, startY, width, height);
-                    }
-                    break;
-                case 4:
-                    if (fill) { g.FillRectangle(brush, startX, startY, width, height); }
-                    else
-                    {
-                        g.DrawRectangle(pen, startX, startY, width, height);
-                    }
-                    break;
-                case 5:
-                    g.DrawLine(pen, startX, startY, x, y);
-                    break;
-            }
+            index = 0;  //Unchoose shape
             fill = false;
+            dragging = false;
+            zooming = false;
             paint = false;
         }
 
@@ -231,6 +322,11 @@ namespace Paint_application
             MessageBox.Show("\t **Programmer** \n School: University of Technology and Education \n \nNguyễn Thanh Tường-19110066");
         }
 
+        private void btn_arc_Click(object sender, EventArgs e)
+        {
+            index = 6;
+        }
+
         private void btn_eraser_Click(object sender, EventArgs e)
         {
             index = 2;
@@ -253,8 +349,6 @@ namespace Paint_application
             Point point = set_point(color_picker, e.Location);
             pic_color.BackColor = ((Bitmap)color_picker.Image).GetPixel(point.X, point.Y);
             new_color = pic_color.BackColor;
-            pen.Color = pic_color.BackColor;
-            brush.Color = pic_color.BackColor;
         }
 
         private void validate(Bitmap bm, Stack<Point> stackPixel, int x, int y, Color current_color, Color new_color)
@@ -267,6 +361,59 @@ namespace Paint_application
             }
         }
 
+        private void btn_circle_Click(object sender, EventArgs e)
+        {
+            index = 8;
+        }
+
+        private void btn_ellipse_Click(object sender, EventArgs e)
+        {
+            index = 3;
+        }
+
+        private void btn_rectangle_Click(object sender, EventArgs e)
+        {
+            index = 4;
+        }
+
+        private void btn_line_Click(object sender, EventArgs e)
+        {
+            index = 5;
+        }
+
+        private void dashStylePicker_SelectedValueChanged(object sender, EventArgs e)
+        {
+            switch (dashStylePicker.SelectedItem.ToString())
+            {
+                case "Dash":
+                    dashStyle = DashStyle.Dash;
+                    break;
+                case "DashDot":
+                    dashStyle = DashStyle.DashDot;
+                    break;
+                case "DashDotDot":
+                    dashStyle = DashStyle.DashDotDot;
+                    break;
+                case "Dot":
+                    dashStyle = DashStyle.Dot;
+                    break;
+                case "Solid":
+                    dashStyle = DashStyle.Solid;
+                    break;
+            }
+        }
+
+        private void btn_delete_Click(object sender, EventArgs e)
+        {
+            if (selectedShapes.Count == 0)
+                return;
+            foreach (var item in selectedShapes)
+            {
+                shapes.Remove(item);
+            }
+            pictureBox1.Refresh();
+        }
+
         private void Fill(Bitmap bm, int x, int y, Color new_color)
         {
             Color current_color = bm.GetPixel(x, y);
@@ -275,15 +422,15 @@ namespace Paint_application
             bm.SetPixel(x, y, new_color);
             if (current_color == new_color) return;
 
-            while(stackPixel.Count > 0)
+            while (stackPixel.Count > 0)
             {
                 Point p = (Point)stackPixel.Pop();
-                if(p.X > 0 && p.Y > 0 && p.X < bm.Width-1 && p.Y < bm.Height - 1)
+                if (p.X > 0 && p.Y > 0 && p.X < bm.Width - 1 && p.Y < bm.Height - 1)
                 {
-                    validate(bm, stackPixel, p.X-1, p.Y, current_color, new_color);
-                    validate(bm, stackPixel, p.X, p.Y-1, current_color, new_color);
-                    validate(bm, stackPixel, p.X+1, p.Y, current_color, new_color);
-                    validate(bm, stackPixel, p.X, p.Y+1, current_color, new_color);
+                    validate(bm, stackPixel, p.X - 1, p.Y, current_color, new_color);
+                    validate(bm, stackPixel, p.X, p.Y - 1, current_color, new_color);
+                    validate(bm, stackPixel, p.X + 1, p.Y, current_color, new_color);
+                    validate(bm, stackPixel, p.X, p.Y + 1, current_color, new_color);
                 }
             }
         }

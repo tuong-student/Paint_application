@@ -9,15 +9,15 @@ namespace Paint_application
 {
     internal abstract class Shape
     {
+        internal Rectangle rectangle;
         internal Point p1;
         internal Point p2;
         internal Graphics g;
-        internal Pen myPen;
         internal bool flagZoom = false;
         internal int zoom;
         internal int width;
         internal int height;
-        internal Rectangle rectangle;
+
 
         public abstract void Draw();
 
@@ -30,12 +30,6 @@ namespace Paint_application
                 return false;
         }
 
-        public void Zoom(int z)
-        {
-            if (flagZoom == false && z < 0)
-                return;
-            else
-                zoom += z;
-        }
+        public abstract void Zoom(int z);
     }
 }

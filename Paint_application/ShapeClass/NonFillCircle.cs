@@ -8,11 +8,12 @@ using System.Drawing.Drawing2D;
 
 namespace Paint_application.ShapeClass
 {
-    internal class Arc : Shape
+    internal class NonFillCircle : Shape
     {
+        int radius = 0;
         Pen myPen;
 
-        public Arc(Graphics g, Pen pen, DashStyle dashStyle)
+        public NonFillCircle(Graphics g, Pen pen, DashStyle dashStyle)
         {
             this.g = g;
             this.myPen = pen;
@@ -21,20 +22,24 @@ namespace Paint_application.ShapeClass
 
         public override void Draw()
         {
-            this.width = Math.Abs(this.p2.X - this.p1.X) + this.zoom;
-            this.height = Math.Abs(this.p2.Y - this.p1.Y) + this.zoom;
+            radius = Math.Abs(this.p2.X - this.p1.X);
 
-            //Check if width or heigt less than 0 then keep the current value of zoom, dont let user zoom out
-            if (this.width < 10 || this.height < 10)
+            if (Math.Abs(this.p2.Y - this.p1.Y) >= radius)
+                radius = Math.Abs(this.p2.Y - this.p1.Y);
+
+            int startPointX = this.p1.X - radius;
+            int startPointY = this.p1.Y - radius;
+
+            //Reset zoom out action
+            if (this.radius + this.zoom <= 0)
                 flagZoom = false;
             else
                 flagZoom = true;
 
-            rectangle = new Rectangle(Math.Min(this.p1.X, this.p2.X),
-                        Math.Min(this.p1.Y, this.p2.Y),
-                        this.width, this.height);
+            this.radius = this.radius + this.zoom;
 
-            g.DrawArc(myPen, rectangle, 0, 270);
+            rectangle = new Rectangle(startPointX, startPointY, radius * 2, radius * 2);
+            g.DrawEllipse(myPen, rectangle);
         }
 
         public override void Zoom(int z)
