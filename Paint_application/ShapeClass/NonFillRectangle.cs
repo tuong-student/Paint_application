@@ -10,7 +10,8 @@ namespace Paint_application.ShapeClass
 {
     internal class NonFillRectangle : Shape
     {
-        new Pen myPen;
+        Pen myPen;
+        
 
         public NonFillRectangle(Graphics g, Pen pen, DashStyle dashStyle)
         {

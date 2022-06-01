@@ -26,7 +26,6 @@ namespace Paint_application
             g.Clear(Color.White);
             pictureBox1.Image = bm;
             pen = new Pen(Color.Black, size);
-            brush = new SolidBrush(Color.Black);
             erase = new Pen(Color.White, size);
             dashStyle = DashStyle.Solid;
             new_color = Color.Black;
@@ -54,7 +53,6 @@ namespace Paint_application
         Pen pen;
         DashStyle dashStyle;
         Pen erase;
-        SolidBrush brush;
         ColorDialog cd = new ColorDialog();
         Color new_color;
 
@@ -84,11 +82,15 @@ namespace Paint_application
         private void pictureBox1_Paint(object sender, PaintEventArgs e)
         {
             // Refresh screen every time it has change on the screen
-            if (!paint && !dragging) return;
             switch (index)
             {
                 case 6:
-
+                    for(int i = 0; i<shapes.Count - 1; i++)
+                    {
+                        shapes[i].g = e.Graphics;
+                        shapes[i].Draw();
+                        shapes[i].g = g;
+                    }
                     break;
                 default:
                     foreach (Shape shape in shapes)
@@ -103,6 +105,7 @@ namespace Paint_application
 
         private void btn_clear_Click(object sender, EventArgs e)
         {
+            shapes.Clear();
             g.Clear(Color.White);
             pictureBox1.Image = bm;
             index = 0;
@@ -216,10 +219,6 @@ namespace Paint_application
                         zoomedShape = shapes[i];
                         zooming = true;
                     }
-                    else
-                    {
-                        selectedShapes.Clear();
-                    }
                 }
                 if (touchedShape == false)
                     dragging = false;
@@ -268,6 +267,7 @@ namespace Paint_application
         private void pictureBox1_MouseUp(object sender, MouseEventArgs e)
         {
             index = 0;  //Unchoose shape
+            pictureBox1.Refresh();
             fill = false;
             dragging = false;
             zooming = false;
@@ -281,12 +281,12 @@ namespace Paint_application
 
         private void pictureBox1_MouseClick(object sender, MouseEventArgs e)
         {
-            if(index == 7)
-            {
-                Point p = set_point(pictureBox1, e.Location);
-                Fill(bm, p.X, p.Y, new_color);
-                pictureBox1.Refresh();
-            }
+            //if(index == 7)
+            //{
+            //    Point p = set_point(pictureBox1, e.Location);
+            //    Fill(bm, p.X, p.Y, new_color);
+            //    pictureBox1.Refresh();
+            //}
         }
 
         private void btn_fill_Click(object sender, EventArgs e)
@@ -401,6 +401,7 @@ namespace Paint_application
                     dashStyle = DashStyle.Solid;
                     break;
             }
+            pen.DashStyle = dashStyle;
         }
 
         private void btn_delete_Click(object sender, EventArgs e)
